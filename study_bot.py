@@ -53,7 +53,7 @@ if st.session_state.question_index < len(questions) and not st.session_state.qui
     # Show question and image (if available)
     st.subheader(q["Question"])
     if "Image" in q:
-    image_path = str(q["Image"]).strip()  # Ensure it's a string and remove spaces
+        image_path = str(q["Image"]).strip()  # Ensure it's a string and remove spaces
     
     if image_path.startswith("http") or image_path.startswith("https"):  
         st.image(image_path, width=300)  # Load online images

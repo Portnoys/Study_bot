@@ -91,7 +91,7 @@ if st.session_state.question_index < len(questions) and not st.session_state.qui
                     st.error(f"❌ Incorrect again! The correct answer was: {correct_answer}")
                     st.session_state.question_index += 1
                     st.session_state.hint_used = False  # Reset hint usage for next question
-            st.experimental_rerun()
+            st.rerun()
         else:
             st.warning("⚠️ Please select an answer before submitting.")
 
@@ -113,4 +113,4 @@ if st.session_state.question_index >= len(questions):
         st.session_state.question_index = 0
         st.session_state.hint_used = False
         st.session_state.quiz_done = False
-        st.experimental_rerun()
+        st.rerun()

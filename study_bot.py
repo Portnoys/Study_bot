@@ -34,17 +34,18 @@ if st.session_state.question_index < len(questions) and not st.session_state.qui
     options = [q["Option_A"], q["Option_B"], q["Option_C"], q["Option_D"]]
     answer = st.radio("Choose an answer:", options, index=None)
 
-    # Check for correct answer column
+    # Validate Correct_Answer column
     if "Correct_Answer" in q:
-        correct_option = q["Correct_Answer"]  # Should be "Option_A", "Option_B", etc.
+        correct_option = str(q["Correct_Answer"]).strip()  # Ensure it's a string and remove spaces
 
-        if correct_option in q:
+        # Ensure the correct answer key is actually in the row
+        if correct_option in q and correct_option in ["Option_A", "Option_B", "Option_C", "Option_D"]:
             correct_answer = q[correct_option]  # Get the actual answer text
         else:
-            st.error("⚠️ Error: The correct answer option is missing in the question data.")
+            st.error(f"⚠️ Error: '{correct_option}' is not a valid answer option in the question data.")
             correct_answer = None
     else:
-        st.error("⚠️ Error: 'Correct_Answer' column not found in CSV.")
+        st.error("⚠️ Error: 'Correct_Answer' column not found in CSV. Ensure correct spelling.")
         correct_answer = None
 
     # Check answer when submit button is clicked

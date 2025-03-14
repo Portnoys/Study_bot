@@ -51,7 +51,7 @@ def play_sound(sound_file):
                     audio_bytes = audio_file.read()
                     b64 = base64.b64encode(audio_bytes).decode()
                     audio_html = f"""
-                    <audio autoplay>
+                    <audio controls autoplay>
                         <source src="data:audio/mp3;base64,{b64}" type="audio/mp3">
                         Your browser does not support the audio element.
                     </audio>
@@ -69,92 +69,101 @@ if "score" not in st.session_state:
     st.session_state.score = 0
 if "question_index" not in st.session_state:
     st.session_state.question_index = 0
-if "hint_used" not in st.session_state:
-    st.session_state.hint_used = False
-if "quiz_done" not in st.session_state:
-    st.session_state.quiz_done = False
-if "last_selected_answer" not in st.session_state:
-    st.session_state.last_selected_answer = None
+if "hint_visible" not in st.session_state:
+    st.session_state.hint_visible = False
+if "quiz_started" not in st.session_state:
+    st.session_state.quiz_started = False
 
-# Display quiz
-st.title("🧠 Study Bot Quiz")
+# Show intro page
+if not st.session_state.quiz_started:
+    st.title("🧠 Study Bot Quiz")
+    total_questions = len(questions)
+    points_per_question = 100 / total_questions
 
-if st.session_state.question_index < len(questions) and not st.session_state.quiz_done:
-    q = questions[st.session_state.question_index]
+    st.markdown(f"""
+        **Welcome to the Study Bot Quiz!**  
+        - There are **{total_questions}** questions.  
+        - Each question is worth **{int(points_per_question)} points**.  
+        - If you answer **correctly after a hint**, you get **half the points**.  
+        - You have **one extra attempt** after seeing the hint.  
+    """)
 
-    # Show question
-    st.subheader(q["Question"])
+    if st.button("Start Quiz"):
+        st.session_state.quiz_started = True
+        st.rerun()
+else:
+    # Display quiz
+    if st.session_state.question_index < len(questions):
+        q = questions[st.session_state.question_index]
 
-    # Show image if available
-    if "Image" in q:
-        image_path = str(q["Image"]).strip()
-        
-        if image_path.startswith("http") or image_path.startswith("https"):  
-            st.image(image_path, width=300)  # Load online images
-        elif os.path.exists(image_path):  
-            try:
-                st.image(image_path, width=300)  # Load local images
-            except Exception as e:
-                st.warning(f"⚠️ Could not load image: {image_path}. Error: {e}")
-        else:
-            st.warning(f"⚠️ Image not found: {image_path}. Please check file location.")
+        # Show question
+        st.subheader(q["Question"])
 
-    # Show multiple-choice options
-    options = [q["Option_A"], q["Option_B"], q["Option_C"], q["Option_D"]]
-    answer = st.radio("Choose an answer:", options, index=None)
-
-    # Validate Correct_Answer column
-    if "Correct_Answer" in q:
-        correct_option = str(q["Correct_Answer"]).strip()  # Ensure it's a string and remove spaces
-
-        # Fix: Ensure correct_option is valid and exists in q
-        valid_options = ["Option_A", "Option_B", "Option_C", "Option_D"]
-        if correct_option in valid_options and correct_option in q:
-            correct_answer = str(q[correct_option]).strip()  # Get actual answer text and clean spaces
-        else:
-            st.error(f"⚠️ Error: '{correct_option}' is not valid. Check CSV formatting.")
-            correct_answer = None
-    else:
-        st.error("⚠️ Error: 'Correct_Answer' column not found in CSV.")
-        correct_answer = None
-
-    # Show hint if the user previously got it wrong
-    if st.session_state.hint_used and st.session_state.last_selected_answer == answer:
-        st.warning(f"💡 Hint: {q['Hint']}")
-
-    # Check answer when submit button is clicked
-    if st.button("Submit"):
-        if answer and correct_answer:
-            st.session_state.last_selected_answer = answer  # Save last selected answer
-
-            if answer == correct_answer:
-                points = 100 / len(questions) if not st.session_state.hint_used else (100 / len(questions)) / 2
-                st.session_state.score += int(points)
-                st.success(f"✅ Correct! +{int(points)} points")
-
-                # Play correct sound
-                if "Sound_Correct" in q:
-                    play_sound(q["Sound_Correct"])
-
-                st.session_state.question_index += 1
-                st.session_state.hint_used = False  # Reset hint usage for next question
+        # Show image if available
+        if "Image" in q:
+            image_path = str(q["Image"]).strip()
+            
+            if image_path.startswith("http") or image_path.startswith("https"):  
+                st.image(image_path, width=300)  # Load online images
+            elif os.path.exists(image_path):  
+                try:
+                    st.image(image_path, width=300)  # Load local images
+                except Exception as e:
+                    st.warning(f"⚠️ Could not load image: {image_path}. Error: {e}")
             else:
-                if not st.session_state.hint_used:
-                    st.session_state.hint_used = True
+                st.warning(f"⚠️ Image not found: {image_path}. Please check file location.")
 
-                    # Play incorrect sound
-                    if "Sound_Incorrect" in q:
-                        play_sound(q["Sound_Incorrect"])
+        # Show multiple-choice options
+        options = [q["Option_A"], q["Option_B"], q["Option_C"], q["Option_D"]]
+        answer = st.radio("Choose an answer:", options, index=None)
 
-                else:
-                    st.error(f"❌ Incorrect again! The correct answer was: {correct_answer}")
-                    st.session_state.question_index += 1
-                    st.session_state.hint_used = False  # Reset hint usage for next question
-
-            time.sleep(1)  # Small delay to let the sound play before reloading
-            st.rerun()
+        # Validate Correct_Answer column
+        if "Correct_Answer" in q:
+            correct_option = str(q["Correct_Answer"]).strip()  # Ensure it's a string and remove spaces
+            valid_options = ["Option_A", "Option_B", "Option_C", "Option_D"]
+            if correct_option in valid_options and correct_option in q:
+                correct_answer = str(q[correct_option]).strip()  # Get actual answer text and clean spaces
+            else:
+                st.error(f"⚠️ Error: '{correct_option}' is not valid. Check CSV formatting.")
+                correct_answer = None
         else:
-            st.warning("⚠️ Please select an answer before submitting.")
+            st.error("⚠️ Error: 'Correct_Answer' column not found in CSV.")
+            correct_answer = None
+
+        # Show hint if it was revealed
+        if st.session_state.hint_visible:
+            st.warning(f"💡 Hint: {q['Hint']}")
+
+        # Check answer when submit button is clicked
+        if st.button("Submit"):
+            if answer and correct_answer:
+                if answer == correct_answer:
+                    points = 100 / len(questions) if not st.session_state.hint_visible else (100 / len(questions)) / 2
+                    st.session_state.score += int(points)
+                    st.success(f"✅ Correct! +{int(points)} points")
+
+                    # Play correct sound
+                    if "Sound_Correct" in q:
+                        play_sound(q["Sound_Correct"])
+
+                    st.session_state.question_index += 1
+                    st.session_state.hint_visible = False  # Reset hint usage for next question
+                else:
+                    if not st.session_state.hint_visible:
+                        st.session_state.hint_visible = True
+
+                        # Play incorrect sound
+                        if "Sound_Incorrect" in q:
+                            play_sound(q["Sound_Incorrect"])
+                    else:
+                        st.error(f"❌ Incorrect again! The correct answer was: {correct_answer}")
+                        st.session_state.question_index += 1
+                        st.session_state.hint_visible = False  # Reset hint usage for next question
+
+                time.sleep(1)  # Small delay to let the sound play before reloading
+                st.rerun()
+            else:
+                st.warning("⚠️ Please select an answer before submitting.")
 
 # Show final score
 if st.session_state.question_index >= len(questions):
@@ -172,6 +181,6 @@ if st.session_state.question_index >= len(questions):
     if st.button("Restart Quiz"):
         st.session_state.score = 0
         st.session_state.question_index = 0
-        st.session_state.hint_used = False
-        st.session_state.quiz_done = False
+        st.session_state.hint_visible = False
+        st.session_state.quiz_started = False
         st.rerun()

@@ -14,7 +14,7 @@ def load_questions():
         df.columns = df.columns.str.strip()
 
         # Check if required columns exist
-        required_columns = ["Question", "Option_A", "Option_B", "Option_C", "Option_D", "Correct_Answer", "Hint"]
+        required_columns = ["Question", "Option_A", "Option_B", "Option_C", "Option_D", "Correct_Answer", "Hint", "Image"]
         missing_columns = [col for col in required_columns if col not in df.columns]
 
         if missing_columns:
@@ -100,16 +100,12 @@ else:
         st.subheader(q["Question"])
 
         # Show image if available
-        if "Image" in q:
-            image_path = str(q["Image"]).strip()
-            
+        image_path = str(q.get("Image", "")).strip()
+        if image_path:
             if image_path.startswith("http") or image_path.startswith("https"):  
                 st.image(image_path, width=300)  # Load online images
             elif os.path.exists(image_path):  
-                try:
-                    st.image(image_path, width=300)  # Load local images
-                except Exception as e:
-                    st.warning(f"⚠️ Could not load image: {image_path}. Error: {e}")
+                st.image(image_path, width=300)  # Load local images
             else:
                 st.warning(f"⚠️ Image not found: {image_path}. Please check file location.")
 
@@ -118,17 +114,8 @@ else:
         answer = st.radio("Choose an answer:", options, index=None)
 
         # Validate Correct_Answer column
-        if "Correct_Answer" in q:
-            correct_option = str(q["Correct_Answer"]).strip()  # Ensure it's a string and remove spaces
-            valid_options = ["Option_A", "Option_B", "Option_C", "Option_D"]
-            if correct_option in valid_options and correct_option in q:
-                correct_answer = str(q[correct_option]).strip()  # Get actual answer text and clean spaces
-            else:
-                st.error(f"⚠️ Error: '{correct_option}' is not valid. Check CSV formatting.")
-                correct_answer = None
-        else:
-            st.error("⚠️ Error: 'Correct_Answer' column not found in CSV.")
-            correct_answer = None
+        correct_option = str(q["Correct_Answer"]).strip()
+        correct_answer = q.get(correct_option, "")
 
         # Show hint if it was revealed
         if st.session_state.hint_visible:
@@ -143,18 +130,14 @@ else:
                     st.success(f"✅ Correct! +{int(points)} points")
 
                     # Play correct sound
-                    if "Sound_Correct" in q:
-                        play_sound(q["Sound_Correct"])
+                    play_sound(q.get("Sound_Correct", ""))
 
                     st.session_state.question_index += 1
                     st.session_state.hint_visible = False  # Reset hint usage for next question
                 else:
                     if not st.session_state.hint_visible:
                         st.session_state.hint_visible = True
-
-                        # Play incorrect sound
-                        if "Sound_Incorrect" in q:
-                            play_sound(q["Sound_Incorrect"])
+                        play_sound(q.get("Sound_Incorrect", ""))
                     else:
                         st.error(f"❌ Incorrect again! The correct answer was: {correct_answer}")
                         st.session_state.question_index += 1

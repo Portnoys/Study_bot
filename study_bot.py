@@ -1,7 +1,7 @@
 ﻿import streamlit as st
 import pandas as pd
-import random
 import os
+import time
 
 # Load questions from CSV
 @st.cache_data
@@ -12,21 +12,24 @@ def load_questions():
         # Ensure column names are correctly formatted (strip spaces)
         df.columns = df.columns.str.strip()
 
-        # Check if Correct_Answer column exists
-        if "Correct_Answer" not in df.columns:
-            st.error("⚠️ Error: 'Correct_Answer' column is missing from CSV.")
+        # Check if required columns exist
+        required_columns = ["Question", "Option_A", "Option_B", "Option_C", "Option_D", "Correct_Answer", "Hint"]
+        missing_columns = [col for col in required_columns if col not in df.columns]
+
+        if missing_columns:
+            st.error(f"⚠️ Error: Missing columns in CSV: {missing_columns}")
             return []
         
         # Ensure Correct_Answer values are correctly formatted
         valid_options = ["Option_A", "Option_B", "Option_C", "Option_D"]
         df["Correct_Answer"] = df["Correct_Answer"].astype(str).str.strip()
-        
+
         # Check for invalid Correct_Answer values
         invalid_answers = df[~df["Correct_Answer"].isin(valid_options)]
         if not invalid_answers.empty:
-            st.error(f"⚠️ Error: Found invalid values in 'Correct_Answer' column. Ensure all values are 'Option_A', 'Option_B', etc.")
+            st.error(f"⚠️ Error: Invalid values in 'Correct_Answer' column. Must be 'Option_A', 'Option_B', etc.")
             return []
-        
+
         return df.to_dict(orient="records")
     
     except Exception as e:
@@ -34,6 +37,16 @@ def load_questions():
         return []
 
 questions = load_questions()
+
+# Function to play sounds
+def play_sound(sound_file):
+    if sound_file and isinstance(sound_file, str) and sound_file.strip():
+        if sound_file.startswith("http") or sound_file.startswith("https"):
+            st.audio(sound_file, format="audio/mp3")  # For online sounds
+        elif os.path.exists(sound_file):
+            st.audio(sound_file, format="audio/mp3")  # For local sounds
+        else:
+            st.warning(f"⚠️ Sound file not found: {sound_file}")
 
 # Initialize session state
 if "score" not in st.session_state:
@@ -51,20 +64,23 @@ st.title("🧠 Study Bot Quiz")
 if st.session_state.question_index < len(questions) and not st.session_state.quiz_done:
     q = questions[st.session_state.question_index]
 
-    # Show question and image (if available)
+    # Show question
     st.subheader(q["Question"])
+
+    # Show image if available
     if "Image" in q:
-        image_path = str(q["Image"]).strip()  # Ensure it's a string and remove spaces
-    
-    if image_path.startswith("http") or image_path.startswith("https"):  
-        st.image(image_path, width=300)  # Load online images
-    elif os.path.exists(image_path):  
-        try:
-            st.image(image_path, width=300)  # Load local images
-        except Exception as e:
-            st.warning(f"⚠️ Could not load image: {image_path}. Error: {e}")
-    else:
-        st.warning(f"⚠️ Image not found: {image_path}. Please check file location.")
+        image_path = str(q["Image"]).strip()
+        
+        if image_path.startswith("http") or image_path.startswith("https"):  
+            st.image(image_path, width=300)  # Load online images
+        elif os.path.exists(image_path):  
+            try:
+                st.image(image_path, width=300)  # Load local images
+            except Exception as e:
+                st.warning(f"⚠️ Could not load image: {image_path}. Error: {e}")
+        else:
+            st.warning(f"⚠️ Image not found: {image_path}. Please check file location.")
+
     # Show multiple-choice options
     options = [q["Option_A"], q["Option_B"], q["Option_C"], q["Option_D"]]
     answer = st.radio("Choose an answer:", options, index=None)
@@ -91,16 +107,28 @@ if st.session_state.question_index < len(questions) and not st.session_state.qui
                 points = 100 / len(questions) if not st.session_state.hint_used else (100 / len(questions)) / 2
                 st.session_state.score += int(points)
                 st.success(f"✅ Correct! +{int(points)} points")
+
+                # Play correct sound
+                if "Sound_Correct" in q:
+                    play_sound(q["Sound_Correct"])
+
                 st.session_state.question_index += 1
                 st.session_state.hint_used = False  # Reset hint usage for next question
             else:
                 if not st.session_state.hint_used:
                     st.warning(f"💡 Hint: {q['Hint']}")
                     st.session_state.hint_used = True
+
+                    # Play incorrect sound
+                    if "Sound_Incorrect" in q:
+                        play_sound(q["Sound_Incorrect"])
+
                 else:
                     st.error(f"❌ Incorrect again! The correct answer was: {correct_answer}")
                     st.session_state.question_index += 1
                     st.session_state.hint_used = False  # Reset hint usage for next question
+
+            time.sleep(1)  # Small delay to let the sound play before reloading
             st.rerun()
         else:
             st.warning("⚠️ Please select an answer before submitting.")

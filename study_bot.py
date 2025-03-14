@@ -27,33 +27,35 @@ if st.session_state.question_index < len(questions) and not st.session_state.qui
 
     # Show question and image (if available)
     st.subheader(q["Question"])
-    if q["Image"] and isinstance(q["Image"], str):
+    if "Image" in q and isinstance(q["Image"], str) and q["Image"].strip():
         st.image(q["Image"], width=300)
 
     # Show multiple-choice options
     options = [q["Option_A"], q["Option_B"], q["Option_C"], q["Option_D"]]
     answer = st.radio("Choose an answer:", options, index=None)
 
-    # Check answer
-    if st.button("Submit"):
-        if answer:
-            if "Correct_Answer" in q:
-    correct_option = q["Correct_Answer"]  # This should be "Option_A", "Option_B", etc.
-    if correct_option in q:
-        correct_answer = q[correct_option]  # Get the actual answer text
-    else:
-        st.error("Error: The correct answer option is missing in the question data.")
-        correct_answer = None
-else:
-    st.error("Error: 'Correct_Answer' column not found in CSV.")
-    correct_answer = None
+    # Check for correct answer column
+    if "Correct_Answer" in q:
+        correct_option = q["Correct_Answer"]  # Should be "Option_A", "Option_B", etc.
 
+        if correct_option in q:
+            correct_answer = q[correct_option]  # Get the actual answer text
+        else:
+            st.error("⚠️ Error: The correct answer option is missing in the question data.")
+            correct_answer = None
+    else:
+        st.error("⚠️ Error: 'Correct_Answer' column not found in CSV.")
+        correct_answer = None
+
+    # Check answer when submit button is clicked
+    if st.button("Submit"):
+        if answer and correct_answer:
             if answer == correct_answer:
                 points = 100 / len(questions) if not st.session_state.hint_used else (100 / len(questions)) / 2
                 st.session_state.score += int(points)
                 st.success(f"✅ Correct! +{int(points)} points")
                 st.session_state.question_index += 1
-                st.session_state.hint_used = False
+                st.session_state.hint_used = False  # Reset hint usage for next question
             else:
                 if not st.session_state.hint_used:
                     st.warning(f"💡 Hint: {q['Hint']}")
@@ -61,10 +63,10 @@ else:
                 else:
                     st.error(f"❌ Incorrect again! The correct answer was: {correct_answer}")
                     st.session_state.question_index += 1
-                    st.session_state.hint_used = False
+                    st.session_state.hint_used = False  # Reset hint usage for next question
             st.experimental_rerun()
         else:
-            st.warning("Please select an answer before submitting.")
+            st.warning("⚠️ Please select an answer before submitting.")
 
 # Show final score
 if st.session_state.question_index >= len(questions):

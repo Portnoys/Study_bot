@@ -37,7 +37,17 @@ if st.session_state.question_index < len(questions) and not st.session_state.qui
     # Check answer
     if st.button("Submit"):
         if answer:
-            correct_answer = q[q["Correct_Answer"]]
+            if "Correct_Answer" in q:
+    correct_option = q["Correct_Answer"]  # This should be "Option_A", "Option_B", etc.
+    if correct_option in q:
+        correct_answer = q[correct_option]  # Get the actual answer text
+    else:
+        st.error("Error: The correct answer option is missing in the question data.")
+        correct_answer = None
+else:
+    st.error("Error: 'Correct_Answer' column not found in CSV.")
+    correct_answer = None
+
             if answer == correct_answer:
                 points = 100 / len(questions) if not st.session_state.hint_used else (100 / len(questions)) / 2
                 st.session_state.score += int(points)

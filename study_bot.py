@@ -5,7 +5,32 @@ import random
 # Load questions from CSV
 @st.cache_data
 def load_questions():
-    return pd.read_csv("study_questions.csv").to_dict(orient="records")
+    try:
+        df = pd.read_csv("study_questions.csv")
+        
+        # Ensure column names are correctly formatted (strip spaces)
+        df.columns = df.columns.str.strip()
+
+        # Check if Correct_Answer column exists
+        if "Correct_Answer" not in df.columns:
+            st.error("⚠️ Error: 'Correct_Answer' column is missing from CSV.")
+            return []
+        
+        # Ensure Correct_Answer values are correctly formatted
+        valid_options = ["Option_A", "Option_B", "Option_C", "Option_D"]
+        df["Correct_Answer"] = df["Correct_Answer"].astype(str).str.strip()
+        
+        # Check for invalid Correct_Answer values
+        invalid_answers = df[~df["Correct_Answer"].isin(valid_options)]
+        if not invalid_answers.empty:
+            st.error(f"⚠️ Error: Found invalid values in 'Correct_Answer' column. Ensure all values are 'Option_A', 'Option_B', etc.")
+            return []
+        
+        return df.to_dict(orient="records")
+    
+    except Exception as e:
+        st.error(f"⚠️ Error loading questions: {str(e)}")
+        return []
 
 questions = load_questions()
 
@@ -38,14 +63,15 @@ if st.session_state.question_index < len(questions) and not st.session_state.qui
     if "Correct_Answer" in q:
         correct_option = str(q["Correct_Answer"]).strip()  # Ensure it's a string and remove spaces
 
-        # Ensure the correct answer key is actually in the row
-        if correct_option in q and correct_option in ["Option_A", "Option_B", "Option_C", "Option_D"]:
-            correct_answer = q[correct_option]  # Get the actual answer text
+        # Fix: Ensure correct_option is valid and exists in q
+        valid_options = ["Option_A", "Option_B", "Option_C", "Option_D"]
+        if correct_option in valid_options and correct_option in q:
+            correct_answer = str(q[correct_option]).strip()  # Get actual answer text and clean spaces
         else:
-            st.error(f"⚠️ Error: '{correct_option}' is not a valid answer option in the question data.")
+            st.error(f"⚠️ Error: '{correct_option}' is not valid. Check CSV formatting.")
             correct_answer = None
     else:
-        st.error("⚠️ Error: 'Correct_Answer' column not found in CSV. Ensure correct spelling.")
+        st.error("⚠️ Error: 'Correct_Answer' column not found in CSV.")
         correct_answer = None
 
     # Check answer when submit button is clicked

@@ -52,9 +52,18 @@ if st.session_state.question_index < len(questions) and not st.session_state.qui
 
     # Show question and image (if available)
     st.subheader(q["Question"])
-    if "Image" in q and isinstance(q["Image"], str) and q["Image"].strip():
-        st.image(q["Image"], width=300)
-
+    if "Image" in q:
+    image_path = str(q["Image"]).strip()  # Ensure it's a string and remove spaces
+    
+    if image_path.startswith("http") or image_path.startswith("https"):  
+        st.image(image_path, width=300)  # Load online images
+    elif os.path.exists(image_path):  
+        try:
+            st.image(image_path, width=300)  # Load local images
+        except Exception as e:
+            st.warning(f"⚠️ Could not load image: {image_path}. Error: {e}")
+    else:
+        st.warning(f"⚠️ Image not found: {image_path}. Please check file location.")
     # Show multiple-choice options
     options = [q["Option_A"], q["Option_B"], q["Option_C"], q["Option_D"]]
     answer = st.radio("Choose an answer:", options, index=None)

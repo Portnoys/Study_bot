@@ -1,6 +1,7 @@
 ﻿import streamlit as st
 import pandas as pd
 import os
+import base64
 import time
 
 # Load questions from CSV
@@ -41,12 +42,27 @@ questions = load_questions()
 # Function to play sounds
 def play_sound(sound_file):
     if sound_file and isinstance(sound_file, str) and sound_file.strip():
-        if sound_file.startswith("http") or sound_file.startswith("https"):
-            st.audio(sound_file, format="audio/mp3")  # For online sounds
-        elif os.path.exists(sound_file):
-            st.audio(sound_file, format="audio/mp3")  # For local sounds
-        else:
-            st.warning(f"⚠️ Sound file not found: {sound_file}")
+        try:
+            if sound_file.startswith("http") or sound_file.startswith("https"):
+                st.audio(sound_file, format="audio/mp3")  # Play online audio
+
+            elif os.path.exists(sound_file):
+                with open(sound_file, "rb") as audio_file:
+                    audio_bytes = audio_file.read()
+                    b64 = base64.b64encode(audio_bytes).decode()
+                    audio_html = f"""
+                    <audio autoplay>
+                        <source src="data:audio/mp3;base64,{b64}" type="audio/mp3">
+                        Your browser does not support the audio element.
+                    </audio>
+                    """
+                    st.markdown(audio_html, unsafe_allow_html=True)
+
+            else:
+                st.warning(f"⚠️ Sound file not found: {sound_file}")
+
+        except Exception as e:
+            st.warning(f"⚠️ Error playing sound: {e}")
 
 # Initialize session state
 if "score" not in st.session_state:
@@ -57,6 +73,8 @@ if "hint_used" not in st.session_state:
     st.session_state.hint_used = False
 if "quiz_done" not in st.session_state:
     st.session_state.quiz_done = False
+if "last_selected_answer" not in st.session_state:
+    st.session_state.last_selected_answer = None
 
 # Display quiz
 st.title("🧠 Study Bot Quiz")
@@ -100,9 +118,15 @@ if st.session_state.question_index < len(questions) and not st.session_state.qui
         st.error("⚠️ Error: 'Correct_Answer' column not found in CSV.")
         correct_answer = None
 
+    # Show hint if the user previously got it wrong
+    if st.session_state.hint_used and st.session_state.last_selected_answer == answer:
+        st.warning(f"💡 Hint: {q['Hint']}")
+
     # Check answer when submit button is clicked
     if st.button("Submit"):
         if answer and correct_answer:
+            st.session_state.last_selected_answer = answer  # Save last selected answer
+
             if answer == correct_answer:
                 points = 100 / len(questions) if not st.session_state.hint_used else (100 / len(questions)) / 2
                 st.session_state.score += int(points)
@@ -116,7 +140,6 @@ if st.session_state.question_index < len(questions) and not st.session_state.qui
                 st.session_state.hint_used = False  # Reset hint usage for next question
             else:
                 if not st.session_state.hint_used:
-                    st.warning(f"💡 Hint: {q['Hint']}")
                     st.session_state.hint_used = True
 
                     # Play incorrect sound
